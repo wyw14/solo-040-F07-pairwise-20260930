@@ -41,6 +41,7 @@ type Runtime struct {
 	Safety          *safety.Service
 	Snapshot        *monitor.Snapshot
 	Incidents       *monitor.IncidentReview
+	Deviations      *monitor.DeviationWatch
 	Health          *monitor.HealthRegistry
 	Recovery        *cycle.Recovery
 	Chambers        []string
@@ -58,6 +59,8 @@ func NewRuntime(ctx context.Context, dataDirectory string) (*Runtime, error) {
 	gateState := gate.NewState(chambers...)
 	gateCommands := gate.NewCommands()
 	gateController := gate.NewController(gateState, gateCommands, recorder, now)
+	deviations := monitor.NewDeviationWatch(chambers, gateCommands, gateState, recorder, monitor.DefaultDeviationThreshold, now)
+	gateController.BindChangeSink(deviations)
 	signalStore := signal.NewStore()
 	signalPublisher := signal.NewPublisher(signalStore, recorder, now)
 	signalService := signal.NewService(signalStore)
@@ -115,7 +118,7 @@ func NewRuntime(ctx context.Context, dataDirectory string) (*Runtime, error) {
 		Interlocks: interlockCoordinator, Cycles: cycleCoordinator, CycleService: cycleService,
 		Leases: leaseService, LeaseSweeper: leaseSweeper, Safety: safetyService,
 		Snapshot:  monitor.NewSnapshot(cycleCoordinator, gateState, admissionService, signalService, safetyService, now),
-		Incidents: monitor.NewIncidentReview(store), Health: health, Recovery: recovery,
+		Incidents: monitor.NewIncidentReview(store), Deviations: deviations, Health: health, Recovery: recovery,
 		Chambers: chambers, Now: now,
 	}, nil
 }

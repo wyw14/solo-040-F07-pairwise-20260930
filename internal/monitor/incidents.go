@@ -64,6 +64,10 @@ func incidentMeaning(kind model.EventType) (string, string, bool) {
 		return "warning", "Recovery sequence requires review", true
 	case model.EventPlanCancelled:
 		return "notice", "Convoy plan cancelled and compensated", true
+	case model.EventGateDeviationRaised:
+		return "warning", "Gate position deviated from commanded target", true
+	case model.EventGateDeviationResolved:
+		return "notice", "Gate position matched command target", true
 	default:
 		return "", "", false
 	}

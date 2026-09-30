@@ -46,6 +46,12 @@ func incidentsHandler(runtime *Runtime) http.HandlerFunc {
 	}
 }
 
+func deviationsHandler(runtime *Runtime) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		writeJSON(w, http.StatusOK, runtime.Deviations.List())
+	}
+}
+
 type leaseInput struct {
 	ChamberID  string `json:"chamber_id"`
 	VesselID   string `json:"vessel_id"`

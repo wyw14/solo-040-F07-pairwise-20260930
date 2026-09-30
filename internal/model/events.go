@@ -11,17 +11,20 @@ import (
 type EventType string
 
 const (
-	EventPlanCreated      EventType = "plan.created"
-	EventPlanCancelled    EventType = "plan.cancelled"
-	EventCycleCreated     EventType = "cycle.created"
-	EventCycleAdvanced    EventType = "cycle.advanced"
-	EventCommandQueued    EventType = "command.queued"
-	EventCommandSettled   EventType = "command.settled"
-	EventSignalChanged    EventType = "signal.changed"
-	EventLeaseChanged     EventType = "lease.changed"
-	EventEmergencyStarted EventType = "emergency.started"
-	EventEmergencySettled EventType = "emergency.settled"
-	EventReplayWarning    EventType = "replay.warning"
+	EventPlanCreated               EventType = "plan.created"
+	EventPlanCancelled             EventType = "plan.cancelled"
+	EventCycleCreated              EventType = "cycle.created"
+	EventCycleAdvanced             EventType = "cycle.advanced"
+	EventCommandQueued             EventType = "command.queued"
+	EventCommandSettled            EventType = "command.settled"
+	EventGateDeviationRaised       EventType = "gate.deviation_raised"
+	EventGateDeviationAcknowledged EventType = "gate.deviation_acknowledged"
+	EventGateDeviationResolved     EventType = "gate.deviation_resolved"
+	EventSignalChanged             EventType = "signal.changed"
+	EventLeaseChanged              EventType = "lease.changed"
+	EventEmergencyStarted          EventType = "emergency.started"
+	EventEmergencySettled          EventType = "emergency.settled"
+	EventReplayWarning             EventType = "replay.warning"
 )
 
 type Event struct {

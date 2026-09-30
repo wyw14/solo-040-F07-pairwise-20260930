@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>LockFlow Deviations</title><link rel="stylesheet" href="/assets/styles.css"></head>
+<body><header><div class="brand"><span class="brand-mark">LF</span>LockFlow</div><nav><a href="/operations">Operations</a><a href="/chamber">Chamber</a><a href="/interlocks">Interlocks</a><a href="/incidents">Incidents</a><a aria-current="page" href="/deviations">Deviations</a></nav></header>
+<main><div class="page-title"><div><h1>闸门位置偏差</h1><div class="muted">命令目标位与现场观测位长期不一致的告警，按闸室展示</div></div><button id="refresh">Refresh</button></div>
+<section class="panel wide"><table><thead><tr><th>闸室</th><th>闸门/设备</th><th>命令</th><th>目标位</th><th>实际位置</th><th>持续时间</th><th>处理状态</th><th>检测时间</th><th>操作</th></tr></thead><tbody id="deviations"></tbody></table></section>
+<div class="message" id="message"></div></main>
+<script src="/assets/app.js"></script><script>
+const {api,shortID,setMessage,withBusy}=window.LockFlow;
+const body=document.querySelector('#deviations');const message=document.querySelector('#message');
+const fmtDuration=(s)=>{if(s===undefined||s===null)return '-';if(s<60)return `${s}s`;const m=Math.floor(s/60),r=s%60;return `${m}m ${r}s`;};
+const statusCell=(item)=>{
+  const cls=item.status==='active'?'warning':'';
+  const tag=`<span class="status ${cls}">${item.status}</span>`;
+  const ack=item.acknowledged?'<div class="muted">已签收</div>':'<div class="muted">待处理</div>';
+  return tag+ack;
+};
+async function acknowledge(chamber,commandID,button){
+  await withBusy(button,async()=>{
+    try{await api(`/api/chambers/${chamber}/deviations/${commandID}/acknowledge`,{method:'POST'});await load();}
+    catch(e){setMessage(message,e.message);}
+  });
+}
+async function load(){
+  const items=await api('/api/deviations');
+  body.innerHTML=items.map((item)=>{
+    const canAck=item.status==='active'&&!item.acknowledged;
+    const action=`<button data-ack data-chamber="${item.chamber_id}" data-command="${item.command_id}" ${canAck?'':'disabled'}>签收</button>`;
+    return `<tr><td>${item.chamber_id}</td><td>${item.direction}<div class="muted">${item.device}</div></td>`+
+      `<td>${item.action}<div class="muted">${shortID(item.command_id)} · ep${item.epoch}</div></td>`+
+      `<td>${item.target_position}</td><td>${item.actual_position}</td>`+
+      `<td>${fmtDuration(item.duration_seconds)}<div class="muted">始于 ${new Date(item.started_at).toLocaleTimeString()}</div></td>`+
+      `<td>${statusCell(item)}${item.reason?`<div class="muted">${item.reason}</div>`:''}</td>`+
+      `<td>${new Date(item.detected_at).toLocaleString()}</td><td>${action}</td></tr>`;
+  }).join('')||'<tr><td colspan="9" class="muted">没有未匹配的闸门偏差</td></tr>';
+  body.querySelectorAll('[data-ack]').forEach((button)=>button.addEventListener('click',()=>acknowledge(button.dataset.chamber,button.dataset.command,button)));
+  setMessage(message,'');
+}
+document.querySelector('#refresh').addEventListener('click',()=>load().catch((e)=>setMessage(message,e.message)));
+load().catch((e)=>setMessage(message,e.message));
+setInterval(()=>load().catch(()=>{}),5000);
+</script></body></html>
