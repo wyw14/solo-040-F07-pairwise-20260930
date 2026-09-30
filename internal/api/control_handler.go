@@ -58,9 +58,15 @@ func commandAckHandler(runtime *Runtime) http.HandlerFunc {
 
 func emergencyHandler(runtime *Runtime) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		record, err := runtime.Safety.EmergencyStop(r.Context(), chi.URLParam(r, "chamberID"))
+		chamberID := chi.URLParam(r, "chamberID")
+		record, err := runtime.Safety.EmergencyStop(r.Context(), chamberID)
 		if err != nil {
 			writeError(w, http.StatusConflict, err)
+			return
+		}
+		// Cancelled commands must release their deviation alarms.
+		if err := runtime.Deviations.Assess(r.Context(), chamberID); err != nil {
+			writeError(w, http.StatusInternalServerError, err)
 			return
 		}
 		writeJSON(w, http.StatusOK, record)

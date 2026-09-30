@@ -17,6 +17,24 @@ const (
 	DeviceDrainValve     DeviceKind = "drain_valve"
 )
 
+// Direction returns the chamber side a gate device belongs to. Devices
+// without an observable gate position report no direction.
+func (d DeviceKind) Direction() (Direction, bool) {
+	switch d {
+	case DeviceUpstreamGate:
+		return DirectionUpstream, true
+	case DeviceDownstreamGate:
+		return DirectionDownstream, true
+	default:
+		return "", false
+	}
+}
+
+const (
+	ActionOpen  = "open"
+	ActionClose = "close"
+)
+
 type CommandState string
 
 const (
@@ -71,6 +89,19 @@ func (c *DeviceCommand) SetState(next CommandState, now time.Time) error {
 	c.State = next
 	c.UpdatedAt = now.UTC()
 	return nil
+}
+
+// TargetPosition resolves the gate position the command action aims for.
+// Actions without a position target report no position.
+func (c DeviceCommand) TargetPosition() (GatePosition, bool) {
+	switch c.Action {
+	case ActionOpen:
+		return GateOpen, true
+	case ActionClose:
+		return GateClosed, true
+	default:
+		return "", false
+	}
 }
 
 type DeviceAck struct {

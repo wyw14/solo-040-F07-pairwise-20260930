@@ -32,10 +32,10 @@ func (c *Controller) Request(ctx context.Context, cycle model.TransitCycle, dire
 	if direction == model.DirectionDownstream {
 		device = model.DeviceDownstreamGate
 	}
-	action := "close"
+	action := model.ActionClose
 	position := model.GateClosing
 	if open {
-		action = "open"
+		action = model.ActionOpen
 		position = model.GateOpening
 	}
 	command, err := c.commands.Issue(cycle, device, action, 0, c.now())
@@ -59,7 +59,7 @@ func (c *Controller) Confirm(ctx context.Context, ack model.DeviceAck) (model.De
 		direction = model.DirectionDownstream
 	}
 	position := model.GateClosed
-	if command.Action == "open" {
+	if command.Action == model.ActionOpen {
 		position = model.GateOpen
 	}
 	if err := c.state.Observe(command.ChamberID, direction, position, c.now()); err != nil {

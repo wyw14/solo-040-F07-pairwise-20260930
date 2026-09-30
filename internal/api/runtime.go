@@ -6,6 +6,7 @@ import (
 
 	"github.com/wyw14/cry-96/internal/admission"
 	"github.com/wyw14/cry-96/internal/cycle"
+	"github.com/wyw14/cry-96/internal/deviation"
 	"github.com/wyw14/cry-96/internal/gate"
 	"github.com/wyw14/cry-96/internal/hydraulics"
 	"github.com/wyw14/cry-96/internal/interlock"
@@ -34,6 +35,7 @@ type Runtime struct {
 	Schedule        *schedule.Service
 	Hydraulics      *hydraulics.Controller
 	Interlocks      *interlock.Coordinator
+	Deviations      *deviation.Tracker
 	Cycles          *cycle.Coordinator
 	CycleService    *cycle.Service
 	Leases          *lease.Service
@@ -87,7 +89,8 @@ func NewRuntime(ctx context.Context, dataDirectory string) (*Runtime, error) {
 		interlock.DefaultPolicy(), interlock.NewArbiter(), gateController,
 		levelByChamber, emergencyActive,
 	)
-	cycleCoordinator := cycle.NewCoordinator(gateController, hydraulicsController, recorder, now)
+	deviationTracker := deviation.NewTracker(gateState, gateCommands, recorder, deviation.DefaultThreshold, now)
+	cycleCoordinator := cycle.NewCoordinator(gateController, hydraulicsController, deviationTracker, recorder, now)
 	cycleService := cycle.NewService(cycleCoordinator, admissionService)
 	safetyCoordinator = safety.NewCoordinator(gateCommands, barrier, recorder, now)
 	safetyService := safety.NewService(safetyCoordinator, cycleCoordinator)
@@ -112,7 +115,8 @@ func NewRuntime(ctx context.Context, dataDirectory string) (*Runtime, error) {
 		SignalStore: signalStore, SignalPublisher: signalPublisher, Signals: signalService,
 		AdmissionQueue: admissionController.Queue(), Admission: admissionService,
 		Planner: planner, Schedule: scheduleService, Hydraulics: hydraulicsController,
-		Interlocks: interlockCoordinator, Cycles: cycleCoordinator, CycleService: cycleService,
+		Interlocks: interlockCoordinator, Deviations: deviationTracker,
+		Cycles: cycleCoordinator, CycleService: cycleService,
 		Leases: leaseService, LeaseSweeper: leaseSweeper, Safety: safetyService,
 		Snapshot:  monitor.NewSnapshot(cycleCoordinator, gateState, admissionService, signalService, safetyService, now),
 		Incidents: monitor.NewIncidentReview(store), Health: health, Recovery: recovery,

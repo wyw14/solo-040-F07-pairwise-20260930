@@ -5,6 +5,13 @@
 <script src="/assets/app.js"></script><script>
 const {api,setMessage,withBusy}=window.LockFlow; const host=document.querySelector('#interlock-grid'); const message=document.querySelector('#message');
 async function stop(chamber,button){await withBusy(button,async()=>{try{await api(`/api/chambers/${chamber}/emergency`,{method:'POST',body:'{}'});await load();}catch(e){setMessage(message,e.message);}});}
-async function load(){const data=await api('/api/interlocks');host.innerHTML=Object.entries(data).map(([id,item])=>`<section class="panel"><h2>${id}</h2><table><tr><th>Emergency</th><td>${item.emergency.status}</td></tr><tr><th>Level</th><td>${item.equipment.LevelM??item.equipment.level_m??0} m</td></tr><tr><th>Pending commands</th><td>${item.pending_commands.length}</td></tr></table><button class="danger" data-stop="${id}">Emergency stop</button></section>`).join('');host.querySelectorAll('[data-stop]').forEach((button)=>button.addEventListener('click',()=>stop(button.dataset.stop,button)));}
+const fmtDuration=(seconds)=>{const total=Math.max(0,Math.round(seconds||0));const minutes=Math.floor(total/60);const rest=total%60;return minutes>0?`${minutes}m ${String(rest).padStart(2,'0')}s`:`${rest}s`;};
+const deviationRows=(alarms)=>(alarms||[]).map((alarm)=>`<tr><td>${alarm.device}</td><td>${alarm.action} → ${alarm.target}</td><td>${alarm.observed}</td><td>${fmtDuration(alarm.duration_seconds)}</td><td><span class="status ${alarm.status==='active'?'warning':''}">${alarm.status}</span></td></tr>`).join('')||'<tr><td colspan="5" class="muted">No deviations recorded</td></tr>';
+async function load(){
+  const [data,deviations]=await Promise.all([api('/api/interlocks'),api('/api/deviations')]);
+  host.innerHTML=Object.entries(data).filter(([,item])=>item&&item.emergency).map(([id,item])=>`<section class="panel"><h2>${id}</h2><table><tr><th>Emergency</th><td>${item.emergency.status}</td></tr><tr><th>Level</th><td>${item.equipment.LevelM??item.equipment.level_m??0} m</td></tr><tr><th>Pending commands</th><td>${item.pending_commands.length}</td></tr></table><button class="danger" data-stop="${id}">Emergency stop</button><h3>Position deviations</h3><table><thead><tr><th>Device</th><th>Command</th><th>Observed</th><th>Duration</th><th>Status</th></tr></thead><tbody>${deviationRows(deviations[id])}</tbody></table></section>`).join('');
+  host.querySelectorAll('[data-stop]').forEach((button)=>button.addEventListener('click',()=>stop(button.dataset.stop,button)));
+}
 load().catch((e)=>setMessage(message,e.message));
+setInterval(()=>load().catch(()=>{}),5000);
 </script></body></html>

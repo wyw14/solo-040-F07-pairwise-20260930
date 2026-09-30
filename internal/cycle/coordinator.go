@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/wyw14/cry-96/internal/deviation"
 	"github.com/wyw14/cry-96/internal/gate"
 	"github.com/wyw14/cry-96/internal/hydraulics"
 	"github.com/wyw14/cry-96/internal/journal"
@@ -20,17 +21,19 @@ type Coordinator struct {
 	generations map[string]uint64
 	gates       *gate.Controller
 	hydraulics  *hydraulics.Controller
+	deviations  *deviation.Tracker
 	recorder    *journal.Recorder
 	now         func() time.Time
 }
 
-func NewCoordinator(gates *gate.Controller, hydraulicsController *hydraulics.Controller, recorder *journal.Recorder, now func() time.Time) *Coordinator {
+func NewCoordinator(gates *gate.Controller, hydraulicsController *hydraulics.Controller, deviations *deviation.Tracker, recorder *journal.Recorder, now func() time.Time) *Coordinator {
 	if now == nil {
 		now = time.Now
 	}
 	return &Coordinator{
 		current: make(map[string]model.TransitCycle), generations: make(map[string]uint64),
-		gates: gates, hydraulics: hydraulicsController, recorder: recorder, now: now,
+		gates: gates, hydraulics: hydraulicsController, deviations: deviations,
+		recorder: recorder, now: now,
 	}
 }
 
@@ -80,8 +83,18 @@ func (c *Coordinator) Cancel(ctx context.Context, chamberID, reason string) (mod
 }
 
 func (c *Coordinator) ApplyGateAck(ctx context.Context, ack model.DeviceAck) error {
+	// A command whose target position is not confirmed by device feedback
+	// must not push the transit stage forward.
+	if command, ok := c.gates.Commands().Get(ack.CommandID); ok {
+		if err := c.deviations.Confirmable(ctx, command); err != nil {
+			return err
+		}
+	}
 	command, err := c.gates.Confirm(ctx, ack)
 	if err != nil {
+		return err
+	}
+	if err := c.deviations.Assess(ctx, ack.ChamberID); err != nil {
 		return err
 	}
 	c.mu.Lock()

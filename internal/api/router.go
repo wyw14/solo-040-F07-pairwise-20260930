@@ -30,6 +30,7 @@ func Router(runtime *Runtime, webDirectory string) http.Handler {
 		api.Get("/chambers", chambersHandler(runtime))
 		api.Get("/interlocks", interlocksHandler(runtime))
 		api.Get("/incidents", incidentsHandler(runtime))
+		api.Get("/deviations", deviationsHandler(runtime))
 		api.Get("/plans", plansHandler(runtime))
 		api.Post("/plans", createPlanHandler(runtime))
 		api.Post("/plans/{planID}/signals", publishSignalsHandler(runtime))
